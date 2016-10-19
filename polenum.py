@@ -34,6 +34,7 @@ def d2b(a):
 
 def convert(low, high, lockout=False):
     time = ""
+    tmp = 0
 
     if low == 0 and hex(high) == "-0x80000000":
         return "Not Set"
