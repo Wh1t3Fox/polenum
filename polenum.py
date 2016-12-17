@@ -127,12 +127,10 @@ class SAMRDump:
     def __fetchList(self, rpctransport):
         dce = DCERPC_v5(rpctransport)
         dce.connect()
-        dce.set_auth_level(ntlm.NTLM_AUTH_PKT_INTEGRITY)
         dce.bind(samr.MSRPC_UUID_SAMR)
 
         # Setup Connection
-        resp = samr.hSamrConnect(dce, serverName=u'BETO\x00',
-                                 desiredAccess=samr.MAXIMUM_ALLOWED)
+        resp = samr.hSamrConnect2(dce)
         if resp['ErrorCode'] != 0:
             raise Exception('Connect error')
 
