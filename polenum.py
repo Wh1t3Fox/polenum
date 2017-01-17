@@ -210,18 +210,31 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--username', '-u', help='The specified username')
     parser.add_argument('--password', '-p', help='The password of the user')
-    parser.add_argument('--domain', '-d', required=True, help='The domain or IP')
+    parser.add_argument('--domain', '-d', help='The domain or IP')
     parser.add_argument('--protocols', nargs='*', help=str(SAMRDump.KNOWN_PROTOCOLS.keys()))
+    parser.add_argument('enum4linux', nargs='?', help='username:password@IPaddress')
 
     args = parser.parse_args()
 
+    if not args.domain and not args.enum4linux:
+        parser.error('argument --domain/-d is required')
+
+    user = args.username
+    passw = args.password
+    target = args.domain
+
+    if args.enum4linux:
+        user = args.enum4linux.split(':')[0]
+        passw = args.enum4linux.split(':')[1].split('@')[0]
+        target = args.enum4linux.split('@')[1]
+
     if args.protocols:
-        dumper = SAMRDump(args.protocols, args.username, args.password)
+        dumper = SAMRDump(args.protocols, user, passw)
     else:
-        dumper = SAMRDump(username=args.username, password=args.password)
+        dumper = SAMRDump(username=user, password=passw)
 
     try:
-        dumper.dump(args.domain)
+        dumper.dump(target)
         print('\n')
     except KeyboardInterrupt:
         print('\n')
