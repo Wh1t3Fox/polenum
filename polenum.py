@@ -15,9 +15,6 @@ example: polenum aaa:bbb@127.0.0.1
 """
 from impacket.dcerpc.v5.rpcrt import DCERPC_v5
 from impacket.dcerpc.v5 import transport, samr
-from samr.DOMAIN_INFORMATION_CLASS import (
-        DomainPasswordInformation, DomainLockoutInformation,
-        DomainLogoffInformation)
 from time import strftime, gmtime
 import argparse
 import sys
@@ -167,9 +164,10 @@ class SAMRDump:
         domainHandle = resp4['DomainHandle']
         # End Setup
 
+        domain_passwd = samr.DOMAIN_INFORMATION_CLASS.DomainPasswordInformation
         re = samr.hSamrQueryInformationDomain2(
                     dce, domainHandle=domainHandle,
-                    domainInformationClass=DomainPasswordInformation)
+                    domainInformationClass=domain_passwd)
         self.__min_pass_len = re['Buffer']['Password']['MinPasswordLength'] \
             or "None"
         pass_hist_len = re['Buffer']['Password']['PasswordHistoryLength']
@@ -182,9 +180,10 @@ class SAMRDump:
                 int(re['Buffer']['Password']['MinPasswordAge']['HighPart']))
         self.__pass_prop = d2b(re['Buffer']['Password']['PasswordProperties'])
 
+        domain_lockout = samr.DOMAIN_INFORMATION_CLASS.DomainLockoutInformation
         re = samr.hSamrQueryInformationDomain2(
                         dce, domainHandle=domainHandle,
-                        domainInformationClass=DomainLockoutInformation)
+                        domainInformationClass=domain_lockout)
         self.__rst_accnt_lock_counter = convert(
                 0,
                 re['Buffer']['Lockout']['LockoutObservationWindow'],
@@ -196,9 +195,10 @@ class SAMRDump:
         self.__accnt_lock_thres = re['Buffer']['Lockout']['LockoutThreshold'] \
             or "None"
 
+        domain_logoff = samr.DOMAIN_INFORMATION_CLASS.DomainLogoffInformation
         re = samr.hSamrQueryInformationDomain2(
                         dce, domainHandle=domainHandle,
-                        domainInformationClass=DomainLogoffInformation)
+                        domainInformationClass=domain_logoff)
         self.__force_logoff_time = convert(
                 re['Buffer']['Logoff']['ForceLogoff']['LowPart'],
                 re['Buffer']['Logoff']['ForceLogoff']['HighPart'])
