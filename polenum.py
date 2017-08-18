@@ -18,6 +18,7 @@ from impacket.dcerpc.v5 import transport, samr
 from time import strftime, gmtime
 import argparse
 import sys
+import re
 
 
 def d2b(a):
@@ -263,9 +264,8 @@ def main():
     target = args.domain
 
     if args.enum4linux:
-        user = args.enum4linux.split(':')[0]
-        passw = args.enum4linux.split(':')[1].split('@')[0]
-        target = args.enum4linux.split('@')[1]
+        enum4linux_regex = re.compile('(?:([^@:]*)(?::([^@]*))?@)?(.*)')
+        user, passw, target = enum4linux_regex.match(args.enum4linux).groups()
 
     if args.protocols:
         dumper = SAMRDump(args.protocols, user, passw)
