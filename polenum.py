@@ -1,19 +1,23 @@
 #!/usr/bin/env python2
 
 """
-This Python Script Uses Core's Impacket Library to get the password policy from a windows machine
+Uses Core's Impacket Library to get the password policy from a windows machine
 
-    This is a fork of the original poelnum which is available at CORE Security Technologies (http://www.coresecurity.com/).
+This is a fork of the original poelnum which is available at
+CORE Security Technologies (http://www.coresecurity.com/).
 
-    Usage:./polenum.py -u <username> -p <password> -d <domain/ip> --protocols <protocols>
+Usage:
+./polenum.py -u <username> -p <password> -d <domain/ip> --protocols <protocols>
 
-                Available protocols: ['445/SMB', '139/SMB']
+    Available protocols: ['445/SMB', '139/SMB']
 
-    example: polenum aaa:bbb@127.0.0.1
+example: polenum aaa:bbb@127.0.0.1
 """
 from impacket.dcerpc.v5.rpcrt import DCERPC_v5
 from impacket.dcerpc.v5 import transport, samr
-from impacket import ntlm
+from samr.DOMAIN_INFORMATION_CLASS import (
+        DomainPasswordInformation, DomainLockoutInformation,
+        DomainLogoffInformation)
 from time import strftime, gmtime
 import argparse
 import sys
@@ -63,17 +67,16 @@ def convert(low, high, lockout=False):
     if days > 1:
         time += "{0} days ".format(days)
     elif days == 1:
-    	time += "{0} day ".format(days)
+        time += "{0} day ".format(days)
     if hours > 1:
-    	time += "{0} hours ".format(hours)
+        time += "{0} hours ".format(hours)
     elif hours == 1:
-    	time += "{0} hour ".format(hours)
+        time += "{0} hour ".format(hours)
     if minutes > 1:
-    	time += "{0} minutes ".format(minutes)
+        time += "{0} minutes ".format(minutes)
     elif minutes == 1:
-    	time += "{0} minute ".format(minutes)
+        time += "{0} minute ".format(minutes)
     return time
-
 
 
 class SAMRDump:
@@ -98,9 +101,12 @@ class SAMRDump:
 
         print('\n')
         if (self.__username and self.__password):
-            print('[+] Attaching to {0} using {1}:{2}'.format(addr, self.__username, self.__password))
+            print('[+] Attaching to {0} using {1}:{2}'.format(addr,
+                                                              self.__username,
+                                                              self.__password))
         elif (self.__username):
-            print('[+] Attaching to {0} using {1}'.format(addr, self.__username))
+            print('[+] Attaching to {0} using {1}'.format(addr,
+                                                          self.__username))
         else:
             print('[+] Attaching to {0} using a NULL share'.format(addr))
 
@@ -113,7 +119,9 @@ class SAMRDump:
                 print("\n\t[!] Invalid Protocol '{0}'\n".format(protocol))
                 sys.exit(1)
             print("\n[+] Trying protocol {0}...".format(protocol))
-            rpctransport = transport.SMBTransport(addr, port, r'\samr', self.__username, self.__password)
+            rpctransport = transport.SMBTransport(addr, port, r'\samr',
+                                                  self.__username,
+                                                  self.__password)
 
             try:
                 self.__fetchList(rpctransport)
@@ -134,14 +142,18 @@ class SAMRDump:
         if resp['ErrorCode'] != 0:
             raise Exception('Connect error')
 
-        resp2 = samr.hSamrEnumerateDomainsInSamServer(dce, serverHandle=resp['ServerHandle'],
-                                                      enumerationContext=0,
-                                                      preferedMaximumLength=500)
+        resp2 = samr.hSamrEnumerateDomainsInSamServer(
+                        dce,
+                        serverHandle=resp['ServerHandle'],
+                        enumerationContext=0,
+                        preferedMaximumLength=500)
         if resp2['ErrorCode'] != 0:
             raise Exception('Connect error')
 
-        resp3 = samr.hSamrLookupDomainInSamServer(dce, serverHandle=resp['ServerHandle'],
-                                                  name=resp2['Buffer']['Buffer'][0]['Name'])
+        resp3 = samr.hSamrLookupDomainInSamServer(
+                        dce,
+                        serverHandle=resp['ServerHandle'],
+                        name=resp2['Buffer']['Buffer'][0]['Name'])
         if resp3['ErrorCode'] != 0:
             raise Exception('Connect error')
 
@@ -155,24 +167,41 @@ class SAMRDump:
         domainHandle = resp4['DomainHandle']
         # End Setup
 
-        re = samr.hSamrQueryInformationDomain2(dce, domainHandle=domainHandle,
-                                               domainInformationClass=samr.DOMAIN_INFORMATION_CLASS.DomainPasswordInformation)
-        self.__min_pass_len = re['Buffer']['Password']['MinPasswordLength'] or "None"
-        self.__pass_hist_len = re['Buffer']['Password']['PasswordHistoryLength'] or "None"
-        self.__max_pass_age = convert(int(re['Buffer']['Password']['MaxPasswordAge']['LowPart']), int(re['Buffer']['Password']['MaxPasswordAge']['HighPart']))
-        self.__min_pass_age = convert(int(re['Buffer']['Password']['MinPasswordAge']['LowPart']), int(re['Buffer']['Password']['MinPasswordAge']['HighPart']))
+        re = samr.hSamrQueryInformationDomain2(
+                    dce, domainHandle=domainHandle,
+                    domainInformationClass=DomainPasswordInformation)
+        self.__min_pass_len = re['Buffer']['Password']['MinPasswordLength'] \
+            or "None"
+        pass_hist_len = re['Buffer']['Password']['PasswordHistoryLength']
+        self.__pass_hist_len = pass_hist_len or "None"
+        self.__max_pass_age = convert(
+                int(re['Buffer']['Password']['MaxPasswordAge']['LowPart']),
+                int(re['Buffer']['Password']['MaxPasswordAge']['HighPart']))
+        self.__min_pass_age = convert(
+                int(re['Buffer']['Password']['MinPasswordAge']['LowPart']),
+                int(re['Buffer']['Password']['MinPasswordAge']['HighPart']))
         self.__pass_prop = d2b(re['Buffer']['Password']['PasswordProperties'])
 
-        re = samr.hSamrQueryInformationDomain2(dce, domainHandle=domainHandle,
-                                               domainInformationClass=samr.DOMAIN_INFORMATION_CLASS.DomainLockoutInformation)
-        self.__rst_accnt_lock_counter = convert(0, re['Buffer']['Lockout']['LockoutObservationWindow'], lockout=True)
-        self.__lock_accnt_dur = convert(0, re['Buffer']['Lockout']['LockoutDuration'], lockout=True)
-        self.__accnt_lock_thres = re['Buffer']['Lockout']['LockoutThreshold'] or "None"
+        re = samr.hSamrQueryInformationDomain2(
+                        dce, domainHandle=domainHandle,
+                        domainInformationClass=DomainLockoutInformation)
+        self.__rst_accnt_lock_counter = convert(
+                0,
+                re['Buffer']['Lockout']['LockoutObservationWindow'],
+                lockout=True)
+        self.__lock_accnt_dur = convert(
+                0,
+                re['Buffer']['Lockout']['LockoutDuration'],
+                lockout=True)
+        self.__accnt_lock_thres = re['Buffer']['Lockout']['LockoutThreshold'] \
+            or "None"
 
-        re = samr.hSamrQueryInformationDomain2(dce, domainHandle=domainHandle,
-                                               domainInformationClass=samr.DOMAIN_INFORMATION_CLASS.DomainLogoffInformation)
-        self.__force_logoff_time = convert(re['Buffer']['Logoff']['ForceLogoff']['LowPart'], re['Buffer']['Logoff']['ForceLogoff']['HighPart'])
-
+        re = samr.hSamrQueryInformationDomain2(
+                        dce, domainHandle=domainHandle,
+                        domainInformationClass=DomainLogoffInformation)
+        self.__force_logoff_time = convert(
+                re['Buffer']['Logoff']['ForceLogoff']['LowPart'],
+                re['Buffer']['Logoff']['ForceLogoff']['HighPart'])
 
     def __pretty_print(self):
 
@@ -189,21 +218,29 @@ class SAMRDump:
         for domain in self.__domains:
             print('\t[+] {0}'.format(domain['Name']))
 
-        print("\n[+] Password Info for Domain: {0}".format(self.__domains[0]['Name']))
+        print("\n[+] Password Info for Domain: {0}".format(
+                self.__domains[0]['Name']))
 
-        print("\n\t[+] Minimum password length: {0}".format(self.__min_pass_len))
-        print("\t[+] Password history length: {0}".format(self.__pass_hist_len))
+        print("\n\t[+] Minimum password length: {0}".format(
+                self.__min_pass_len))
+        print("\t[+] Password history length: {0}".format(
+                self.__pass_hist_len))
         print("\t[+] Maximum password age: {0}".format(self.__max_pass_age))
-        print("\t[+] Password Complexity Flags: {0}\n".format(self.__pass_prop or "None"))
+        print("\t[+] Password Complexity Flags: {0}\n".format(
+                self.__pass_prop or "None"))
 
         for i, a in enumerate(self.__pass_prop):
             print("\t\t[+] {0} {1}".format(PASSCOMPLEX[i], str(a)))
 
         print("\n\t[+] Minimum password age: {0}".format(self.__min_pass_age))
-        print("\t[+] Reset Account Lockout Counter: {0}".format(self.__rst_accnt_lock_counter))
-        print("\t[+] Locked Account Duration: {0}".format(self.__lock_accnt_dur))
-        print("\t[+] Account Lockout Threshold: {0}".format(self.__accnt_lock_thres))
-        print("\t[+] Forced Log off Time: {0}".format(self.__force_logoff_time))
+        print("\t[+] Reset Account Lockout Counter: {0}".format(
+                self.__rst_accnt_lock_counter))
+        print("\t[+] Locked Account Duration: {0}".format(
+                self.__lock_accnt_dur))
+        print("\t[+] Account Lockout Threshold: {0}".format(
+                self.__accnt_lock_thres))
+        print("\t[+] Forced Log off Time: {0}".format(
+                self.__force_logoff_time))
 
 
 def main():
@@ -211,8 +248,10 @@ def main():
     parser.add_argument('--username', '-u', help='The specified username')
     parser.add_argument('--password', '-p', help='The password of the user')
     parser.add_argument('--domain', '-d', help='The domain or IP')
-    parser.add_argument('--protocols', nargs='*', help=str(SAMRDump.KNOWN_PROTOCOLS.keys()))
-    parser.add_argument('enum4linux', nargs='?', help='username:password@IPaddress')
+    parser.add_argument('--protocols', nargs='*',
+                        help=str(SAMRDump.KNOWN_PROTOCOLS.keys()))
+    parser.add_argument('enum4linux', nargs='?',
+                        help='username:password@IPaddress')
 
     args = parser.parse_args()
 
