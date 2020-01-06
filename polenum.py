@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """
 Uses Core's Impacket Library to get the password policy from a windows machine
@@ -29,7 +29,7 @@ def d2b(a):
 
     t2bin = tbin[::-1]
     if len(t2bin) != 8:
-        for x in xrange(6 - len(t2bin)):
+        for x in range(6 - len(t2bin)):
             t2bin.insert(0, 0)
     return ''.join([str(g) for g in t2bin])
 
@@ -86,7 +86,7 @@ class SAMRDump:
     def __init__(self, protocols=None,
                  username='', password=''):
         if not protocols:
-            protocols = SAMRDump.KNOWN_PROTOCOLS.keys()
+            protocols = list(SAMRDump.KNOWN_PROTOCOLS.keys())
 
         self.__username = username
         self.__password = password
@@ -250,7 +250,7 @@ def main():
     parser.add_argument('--password', '-p', help='The password of the user')
     parser.add_argument('--domain', '-d', help='The domain or IP')
     parser.add_argument('--protocols', nargs='*',
-                        help=str(SAMRDump.KNOWN_PROTOCOLS.keys()))
+                        help=str(list(SAMRDump.KNOWN_PROTOCOLS.keys())))
     parser.add_argument('enum4linux', nargs='?',
                         help='username:password@IPaddress')
 
