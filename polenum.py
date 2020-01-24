@@ -266,6 +266,9 @@ def main():
     if args.enum4linux:
         enum4linux_regex = re.compile('(?:([^@:]*)(?::([^@]*))?@)?(.*)')
         user, passw, target = enum4linux_regex.match(args.enum4linux).groups()
+        if '@' in target:
+            passw = passw + '@' + target.rpartition('@')[0]
+            target = target.rpartition('@')[2]
 
     if args.protocols:
         dumper = SAMRDump(args.protocols, user, passw)
