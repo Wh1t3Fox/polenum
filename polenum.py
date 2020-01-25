@@ -25,7 +25,7 @@ def d2b(a):
     tbin = []
     while a:
         tbin.append(a % 2)
-        a /= 2
+        a //= 2
 
     t2bin = tbin[::-1]
     if len(t2bin) != 8:
@@ -266,6 +266,9 @@ def main():
     if args.enum4linux:
         enum4linux_regex = re.compile('(?:([^@:]*)(?::([^@]*))?@)?(.*)')
         user, passw, target = enum4linux_regex.match(args.enum4linux).groups()
+        if '@' in target:
+            passw = passw + '@' + target.rpartition('@')[0]
+            target = target.rpartition('@')[2]
 
     if args.protocols:
         dumper = SAMRDump(args.protocols, user, passw)
