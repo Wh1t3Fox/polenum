@@ -19,6 +19,7 @@ from time import strftime, gmtime
 import argparse
 import sys
 import re
+import getpass
 
 
 def d2b(a):
@@ -84,13 +85,14 @@ class SAMRDump:
     }
 
     def __init__(self, protocols=None,
-                 username='', password=''):
+                 username='', password='', hidepwd=False):
         if not protocols:
             protocols = list(SAMRDump.KNOWN_PROTOCOLS.keys())
 
         self.__username = username
         self.__password = password
         self.__protocols = protocols
+        self.__hidepwd = hidepwd
 
     def dump(self, addr):
         """Dumps the list of users and shares registered present at
@@ -98,7 +100,12 @@ class SAMRDump:
         """
 
         print('\n')
-        if (self.__username and self.__password):
+        if (self.__username and self.__password and self.__hidepwd):
+            print('[+] Attaching to {0} using {1}:{2}'.format(addr,
+                                                              self.__username,
+                                                              len(self.__password) * '*'))
+            
+        elif (self.__username and self.__password and not self.__hidepwd):
             print('[+] Attaching to {0} using {1}:{2}'.format(addr,
                                                               self.__username,
                                                               self.__password))
@@ -262,6 +269,7 @@ def main():
     user = args.username
     passw = args.password
     target = args.domain
+    hidepwd = False
 
     if args.enum4linux:
         enum4linux_regex = re.compile('(?:([^@:]*)(?::([^@]*))?@)?(.*)')
@@ -270,10 +278,14 @@ def main():
             passw = passw + '@' + target.rpartition('@')[0]
             target = target.rpartition('@')[2]
 
+    if not passw:
+        hidepwd = True
+        passw = getpass.getpass()
+
     if args.protocols:
-        dumper = SAMRDump(args.protocols, user, passw)
+        dumper = SAMRDump(args.protocols, user, passw, hidepwd=hidepwd)
     else:
-        dumper = SAMRDump(username=user, password=passw)
+        dumper = SAMRDump(username=user, password=passw, hidepwd=hidepwd)
 
     try:
         dumper.dump(target)
