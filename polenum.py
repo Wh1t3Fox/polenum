@@ -60,9 +60,14 @@ def convert(low, high, lockout=False):
         minutes = int(strftime("%M", gmtime(tmp)))
         hours = int(strftime("%H", gmtime(tmp)))
         days = int(strftime("%j", gmtime(tmp)))-1
+        years = int(strftime("%Y", gmtime(tmp)))-1970
     except ValueError as e:
         return "[-] Invalid TIME"
 
+    if years > 1:
+        time += "{0} years ".format(years)
+    elif years == 1:
+        time += "{0} year ".format(years)
     if days > 1:
         time += "{0} days ".format(days)
     elif days == 1:
