@@ -60,6 +60,7 @@ def convert(low, high, lockout=False):
         minutes = int(strftime("%M", gmtime(tmp)))
         hours = int(strftime("%H", gmtime(tmp)))
         days = int(strftime("%j", gmtime(tmp)))-1
+        days += 365*(int(strftime("%Y", gmtime(tmp)))-1970)
     except ValueError as e:
         return "[-] Invalid TIME"
 
